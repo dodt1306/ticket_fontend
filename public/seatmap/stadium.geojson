@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "sectionId": "A" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[200,40],[360,200],[320,200],[200,80],[200,40]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "sectionId": "B" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[360,200],[200,360],[200,320],[320,200],[360,200]]]
+      }
+    }
+  ]
+}
