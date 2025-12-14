@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Waiting Room + MQTT + JWT + PoP Test</title>
+
+  <!-- MQTT.js -->
+  <script src="https://unpkg.com/mqtt@5.5.0/dist/mqtt.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    button { margin: 4px 0; width: 220px; }
+    pre {
+      background: #111;
+      color: #0f0;
+      padding: 10px;
+      height: 280px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🎟️ Ticketing Waiting Room – FULL TEST</h2>
+
+<div>
+  <button onclick="genVisitorToken1()">1️⃣ genVisitorToken</button><br/>
+  <button onclick="enqueue()">2️⃣ Enqueue</button><br/>
+  <button onclick="connectMqtt()">3️⃣ Connect MQTT</button><br/>
+  <button onclick="disconnectMqtt()">🔌 Disconnect MQTT</button><br/>
+  <button onclick="issuePoP()">4️⃣ Issue PoP</button><br/>
+  <button onclick="holdSeat()">5️⃣ Hold Seat</button>
+</div>
+
+<h3>Log</h3>
+<pre id="log"></pre>
+
+<script>
+/* ================= CONFIG ================= */
+
+const API_BASE = "http://localhost:9999";
+const MQTT_WS_URL = "ws://192.168.1.100:8083/mqtt"; // EMQX WS
+const EVENT_ID = "EVT_MULIV_2025";
+const SEAT_ID = "A-10-05";
+
+/* ================= STATE ================= */
+
+let visitorToken = localStorage.getItem("visitorToken");
+let accessToken = null;
+let popToken = null;
+let mqttClient = null;
+
+/* ================= UTILS ================= */
+
+function log(msg) {
+  const el = document.getElementById("log");
+  el.textContent += msg + "\n";
+  el.scrollTop = el.scrollHeight;
+}
+
+function genVisitorToken() {
+  return "vt_" + crypto.randomUUID();
+}
+
+function genVisitorToken1() {
+  visitorToken = genVisitorToken();
+  localStorage.setItem("visitorToken", visitorToken);
+  log("➡️ visitorToken = " + visitorToken);
+}
+
+/* ================= STEP 1: ENQUEUE ================= */
+
+async function enqueue() {
+  if (!visitorToken) {
+    visitorToken = genVisitorToken();
+    localStorage.setItem("visitorToken", visitorToken);
+  }
+
+  log("➡️ Enqueue with visitorToken = " + visitorToken);
+
+  const res = await fetch(`${API_BASE}/enqueue`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: EVENT_ID,
+      visitorToken
+    })
+  });
+
+  const data = await res.json();
+  log("⬅️ Enqueue response: " + JSON.stringify(data));
+}
+
+/* ================= STEP 2: MQTT CONNECT ================= */
+
+function connectMqtt() {
+  if (!visitorToken) {
+    alert("Enqueue first!");
+    return;
+  }
+
+  if (mqttClient) {
+    log("⚠️ MQTT already connected");
+    return;
+  }
+
+  log("➡️ Connecting MQTT as " + visitorToken);
+
+  mqttClient = mqtt.connect(MQTT_WS_URL, {
+    clientId: visitorToken,
+    username: "queue",
+    password: "",
+    clean: true,
+    reconnectPeriod: 0
+  });
+
+  mqttClient.on("connect", () => {
+    log("✅ MQTT connected");
+
+    const topic = `visitor/${visitorToken}`;
+    mqttClient.subscribe(topic, () => {
+      log("📡 Subscribed to " + topic);
+    });
+  });
+
+  mqttClient.on("message", (topic, payload) => {
+    const msg = JSON.parse(payload.toString());
+    log("📨 MQTT message: " + JSON.stringify(msg));
+
+    if (msg.accessToken) {
+      accessToken = msg.accessToken;
+      log("🔐 accessToken received");
+    }
+  });
+
+  mqttClient.on("close", () => {
+    log("🔌 MQTT connection closed");
+  });
+
+  mqttClient.on("error", err => {
+    log("❌ MQTT error: " + err.message);
+  });
+}
+
+/* ================= DISCONNECT MQTT ================= */
+
+function disconnectMqtt() {
+  if (!mqttClient) {
+    log("⚠️ MQTT not connected");
+    return;
+  }
+
+  const topic = `visitor/${visitorToken}`;
+
+  try {
+    mqttClient.unsubscribe(topic, () => {
+      log("📴 Unsubscribed from " + topic);
+    });
+
+    mqttClient.end(true, () => {
+      log("🔌 MQTT disconnected");
+    });
+  } catch (e) {
+    log("❌ Disconnect error: " + e.message);
+  } finally {
+    mqttClient = null;
+   // accessToken = null;
+   // popToken = null;
+  }
+}
+
+/* ================= STEP 3: ISSUE PoP ================= */
+
+async function issuePoP() {
+  if (!accessToken) {
+    alert("No accessToken yet!");
+    return;
+  }
+
+  log("➡️ Issue PoP");
+
+  const res = await fetch(`${API_BASE}/api/pop/issue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + accessToken
+    }
+  });
+
+  const data = await res.json();
+  popToken = data.popToken;
+
+  log("⬅️ PoP issued: " + popToken);
+}
+
+/* ================= STEP 4: HOLD SEAT ================= */
+
+async function holdSeat() {
+  if (!accessToken || !popToken) {
+    alert("Need accessToken + popToken");
+    return;
+  }
+
+  log("➡️ Hold seat " + SEAT_ID);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/seat/hold`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + accessToken,
+        "X-PoP": popToken
+      },
+      body: JSON.stringify({
+        eventId: EVENT_ID,
+        seatId: SEAT_ID
+      })
+    });
+
+    // 👉 ĐỌC BODY DƯỚI DẠNG TEXT (an toàn cho error)
+    const text = await res.text();
+
+    // 👉 HTTP ERROR (401, 409, 403, 500...)
+    if (!res.ok) {
+      log(`❌ HOLD FAILED`);
+      log(`   ↳ HTTP ${res.status} ${res.statusText}`);
+      log(`   ↳ Response: ${text}`);
+      return;
+    }
+
+    // 👉 OK
+    const data = text ? text : {};
+    log("✅ Hold success: " + data);
+
+  } catch (err) {
+    // 👉 LỖI NETWORK / CORS / FETCH FAIL
+    log("🔥 FETCH ERROR: " + err.message);
+  }
+}
+</script>
+
+</body>
+</html>
