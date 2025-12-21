@@ -17,8 +17,7 @@ import StadiumSeatMap from "../components/StadiumSeatMap";
 import CheckoutScreen from "../components/CheckoutScreen";
 import SuccessScreen from "../components/SuccessScreen";
 
-// ❗ TicketingEntry KHÔNG connect / disconnect MQTT
-// ❗ MQTT (nếu cần) đã được quản lý ở MQTTProvider
+
 
 export default function TicketingEntry() {
   const { state } = useLocation();
@@ -110,6 +109,7 @@ export default function TicketingEntry() {
       <SuccessScreen
         bookingId={successData.bookingId}
         tickets={successData.tickets}
+        row={selectedRow}
       />
     );
   }

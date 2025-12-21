@@ -4,15 +4,16 @@ import { useNavigate,useLocation } from "react-router-dom";
 export default function SuccessScreen({
   bookingId,
   tickets,
+  row,
   onHome, // optional callback
 }) {
   const ticketList = tickets?.tickets ?? [];
   const firstTicket = ticketList[0];
   const { state } = useLocation();
-  const { event } = state || {};
+  const { event,sections } = state || {};
   // Giả lập info (có thể map từ backend sau)
   const eventName = event.eventName;
-  const eventDate = "Khán đài: Khán đài A";
+  const eventDate = row.sectionId;
   const seats = ticketList.map(t => t.seatId).join(", ");
   const venue = event.venue;
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function SuccessScreen({
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               Vé điện tử của bạn đã được tạo. Vui lòng kiểm tra email
-              (giả lập) và sử dụng mã QR dưới đây để vào sân.
+               và sử dụng mã QR dưới đây để vào sân.
             </p>
           </div>
 
@@ -51,7 +52,7 @@ export default function SuccessScreen({
                 {eventName}
               </span>
             </div>
-            <div>{eventDate}</div>
+            <div>Khán Đài: {eventDate}</div>
             <div>Ghế: {seats || "A-10-05, A-10-06"}</div>
             <div>{venue}</div>
             <div className="text-xs text-gray-400 mt-1">

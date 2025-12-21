@@ -16,7 +16,7 @@ export default function CheckoutScreen({
   const { state } = useLocation();
   const [seconds, setSeconds] = useState(600); // 10 phút
   const [loading, setLoading] = useState(false);
-  const { event, visitorToken } = state || {};
+  const { event,sections } = state || {};
   // ⏱ Countdown
   useEffect(() => {
     const timer = setInterval(() => {
