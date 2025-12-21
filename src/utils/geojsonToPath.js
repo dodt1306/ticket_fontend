@@ -1,5 +1,8 @@
 export function polygonToPath(coords) {
-  return coords.map(
-    ring => "M " + ring.map(p => `${p[0]} ${p[1]}`).join(" L ") + " Z"
-  ).join(" ");
+  return coords[0]
+    .map(
+      ([x, y], i) =>
+        `${i === 0 ? "M" : "L"} ${x} ${y}`
+    )
+    .join(" ") + " Z";
 }
