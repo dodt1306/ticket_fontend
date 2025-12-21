@@ -17,8 +17,6 @@ import StadiumSeatMap from "../components/StadiumSeatMap";
 import CheckoutScreen from "../components/CheckoutScreen";
 import SuccessScreen from "../components/SuccessScreen";
 
-
-
 export default function TicketingEntry() {
   const { state } = useLocation();
   const { event, visitorToken } = state || {};
@@ -28,14 +26,14 @@ export default function TicketingEntry() {
   // ===== STEP =====
   const [step, setStep] = useState("LISTING");
 
-  // ===== USER INPUT =====
+  // ===== USER PREFERENCE =====
   const [quantity, setQuantity] = useState(null);
+  const [filterSectionId, setFilterSectionId] = useState(null);
 
   // ===== DATA =====
   const [sections, setSections] = useState([]);
 
-  // ===== SELECTION =====
-  const [selectedSectionId, setSelectedSectionId] = useState(null);
+  // ===== CHECKOUT SELECTION =====
   const [selectedRow, setSelectedRow] = useState(null);
 
   // ===== HOLD =====
@@ -61,6 +59,7 @@ export default function TicketingEntry() {
     return <QuantityModal onSelect={setQuantity} />;
   }
 
+  // ===== BUILD ROWS =====
   const rows = sections.flatMap(sec =>
     sec.priceOptions.map(p => ({
       sectionId: sec.sectionId,
@@ -70,15 +69,15 @@ export default function TicketingEntry() {
     }))
   );
 
-  const filteredRows = selectedSectionId
-    ? rows.filter(r => r.sectionId === selectedSectionId)
+  const filteredRows = filterSectionId
+    ? rows.filter(r => r.sectionId === filterSectionId)
     : rows;
 
   async function handleHoldAndCheckout() {
     const res = await createHold({
       eventId: EVENT_ID,
       sectionId: selectedRow.sectionId,
-      quantity,
+      quantity: selectedRow.quantity,
       price: selectedRow.price,
     });
 
@@ -123,7 +122,6 @@ export default function TicketingEntry() {
           await releaseHold({ holdToken });
           setHoldToken(null);
           setSelectedRow(null);
-          setSelectedSectionId(null);
           setStep("LISTING");
         }}
         onPay={({ bookingId, tickets }) => {
@@ -141,29 +139,29 @@ export default function TicketingEntry() {
           <CheckoutFullPanel
             row={selectedRow}
             onCheckout={handleHoldAndCheckout}
-            onClose={() => {
-              setSelectedRow(null);
-              setSelectedSectionId(null);
-            }}
+            onClose={() => setSelectedRow(null)}
           />
         ) : (
           <ListingPanel
             rows={filteredRows}
-            selectedSectionId={selectedSectionId}
-            onClearFilter={() => setSelectedSectionId(null)}
-            onSelectRow={row => {
-              setSelectedRow(row);
-              setSelectedSectionId(row.sectionId);
+            quantity={quantity}
+            onChangeQuantity={q => {
+              setQuantity(q);
+              setSelectedRow(null);
             }}
+            filterSectionId={filterSectionId}
+            onSelectSection={setFilterSectionId}
+            onClearFilter={() => setFilterSectionId(null)}
+            onSelectRow={row => setSelectedRow(row)}
           />
         )
       }
       right={
         <StadiumSeatMap
           sections={sections}
-          selectedSectionId={selectedSectionId}
+          selectedSectionId={filterSectionId}
           onSelectSection={id => {
-            setSelectedSectionId(id);
+            setFilterSectionId(id);
             setSelectedRow(null);
           }}
         />
