@@ -3,6 +3,7 @@ import { fetchEvents } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import AppHeader from "../components/AppHeader";
+import { v4 as uuidv4 } from "uuid"; // ✅ thêm dòng này
 
 export default function HomePage() {
   const [events, setEvents] = useState([]);
@@ -14,7 +15,8 @@ export default function HomePage() {
   }, []);
 
   function handleBuy(event) {
-    const visitorToken = crypto.randomUUID();
+    // ❌ const visitorToken = crypto.randomUUID();
+    const visitorToken = uuidv4(); // ✅ FIX
 
     setVisitorToken(visitorToken);
 

@@ -1,6 +1,6 @@
 import { useAuthStore } from "../store/authStore";
-
-const API_BASE = "http://localhost:9999";
+import { ENV } from "../config/env";
+const API_BASE = `${ENV.API_BASE}`;
 
 export async function apiFetch(
   path,

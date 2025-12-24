@@ -62,14 +62,33 @@ export async function waitingReady({ eventId, visitorToken }) {
     body: { eventId, visitorToken },
   });
 
+  // ❌ HTTP error
   if (!res.ok) {
     const text = await res.text();
     handleUnauthorized(res, text);
     throw new Error(text);
   }
 
-  return res.json();
+  const data = await res.json();
+
+  // ❌ Business error
+  if (data.success === false) {
+    if (data.code === "SESSION_EXPIRED") {
+      alert("Phiên của bạn đã hết hạn. Vui lòng vào hàng đợi lại.");
+       window.location.href = "/";
+    }
+
+    if (data.code === "NOT_IN_QUEUE") {
+      alert("Bạn không còn trong hàng đợi. Vui lòng vào lại từ đầu.");
+       window.location.href = "/";
+    }
+
+    throw new Error(data.code);
+  }
+
+  return data;
 }
+
 
 /* ======================================================
  * PROTECTED APIs – CẦN access_token
